@@ -1,4 +1,4 @@
-define(["require", "exports", "diagramLayouts/DemoLayoutSupport"], function (require, exports, support) {
+define(["require", "exports"], function (require, exports) {
     "use strict";
    /**
      * Performs a simple horizontal tree layout.  Assumes that links are specified
@@ -79,6 +79,49 @@ define(["require", "exports", "diagramLayouts/DemoLayoutSupport"], function (req
             link.setPoints([startX, startY, (startX + endX) * 0.5, startY, (startX + endX) * 0.5, endY, endX, endY]);
         }
     };
+
+    function layoutSubTree (layoutContext, rootId, parentChildMap, childParentMap, levelSize, siblingSize, currentDepth, leafPos) {
+
+        var currentPos = leafPos[0];
+        var childNodes = parentChildMap[rootId];
+  
+        // If this is a root node for other child nodes, then layout the child nodes
+        if (childNodes) {
+  
+            currentPos = 0;
+            for (var i = 0; i < childNodes.length; i++) {
+                // Layout the child subtrees recursively
+                var childPosition = layoutSubTree(layoutContext, childNodes[i], parentChildMap, childParentMap, levelSize, siblingSize, currentDepth + 1, leafPos);
+  
+                // Center parent node vertically next to the children
+                currentPos += childPosition.y / childNodes.length;
+            }
+        } else {
+            // Leaf node, advance the current leaf position
+            leafPos[0] += siblingSize;
+        }
+  
+        var position = {x: currentDepth * levelSize, y: currentPos};
+  
+        if (rootId) {
+            var root = layoutContext.getNodeById(rootId);
+            if (root) {
+                var bounds = root.getContentBounds();
+                var rootPos = {x: position.x - bounds.x - bounds.w * .5, y: position.y};
+                root.setPosition(rootPos);
+  
+                // Center the label inside the node
+                var nodeLabelBounds = root.getLabelBounds();
+                if (nodeLabelBounds) {
+                    var labelX = bounds.x + rootPos.x + 0.5 * (bounds.w - nodeLabelBounds.w);
+                    var labelY = bounds.y + rootPos.y + 0.5 * (bounds.h - nodeLabelBounds.h);
+                    root.setLabelPosition({'x': labelX, 'y': labelY});
+                }
+            }
+        }
+        
+        return position;
+      }
 
     // *************************************************************
     // *************************************************************
